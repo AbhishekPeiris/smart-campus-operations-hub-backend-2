@@ -1,0 +1,41 @@
+{
+  "groups": [
+    {
+      "name": "application.security.jwt",
+      "type": "com.smartcampus.operationshub.security.JwtService",
+      "sourceType": "com.smartcampus.operationshub.security.JwtService"
+    },
+    {
+      "name": "file",
+      "type": "com.smartcampus.operationshub.storage.FileStorageProperties",
+      "sourceType": "com.smartcampus.operationshub.storage.FileStorageProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "application.security.jwt.secret-key",
+      "type": "java.lang.String",
+      "description": "Base64-encoded signing key used to create and verify JWT tokens."
+    },
+    {
+      "name": "application.security.jwt.expiration",
+      "type": "java.lang.Long",
+      "description": "JWT expiration in milliseconds."
+    },
+    {
+      "name": "file.upload-dir",
+      "type": "java.lang.String",
+      "description": "Directory where uploaded ticket files are stored."
+    },
+    {
+      "name": "file.max-attachments-per-ticket",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of attachments allowed per ticket."
+    },
+    {
+      "name": "file.max-file-size",
+      "type": "java.lang.Long",
+      "description": "Maximum upload file size in bytes."
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/smart_campus_operations_hub}
+  devtools:
+    restart:
+      enabled: false
+
+server:
+  port: 8081
+
+application:
+  security:
+    jwt:
+      secret-key: smart_campus_operations_hub_123456789
+      expiration: 86400000
+
+file:
+  upload-dir: uploads/tickets
+  max-attachments-per-ticket: 3
+  max-file-size: 5242880
