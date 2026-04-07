@@ -49,6 +49,27 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/**").hasRole("ADMIN")
 
+                        .requestMatchers(HttpMethod.GET, "/api/v1/resources/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/resources/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/resources/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/resources/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/resources/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bookings").hasAnyRole("USER", "ADMIN", "TECHNICIAN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bookings/my").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bookings/*").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bookings/resource/*").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bookings/conflicts").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bookings").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/bookings/*/review").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/bookings/*/approve").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/bookings/*/reject").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/bookings/*/cancel").authenticated()
+
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notifications/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/notifications/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/notifications/**").authenticated()
+
                         .requestMatchers(HttpMethod.POST, "/api/v1/tickets").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/tickets/**").hasAnyRole("USER", "ADMIN")

@@ -10,11 +10,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import com.smartcampus.operationshub.common.dto.PaginatedResponse;
+import com.smartcampus.operationshub.common.enums.NotificationType;
 import com.smartcampus.operationshub.common.enums.TicketStatus;
 import com.smartcampus.operationshub.common.exception.BadRequestException;
 import com.smartcampus.operationshub.common.exception.ForbiddenOperationException;
 import com.smartcampus.operationshub.common.exception.ResourceNotFoundException;
 import com.smartcampus.operationshub.common.util.TicketReferenceGenerator;
+import com.smartcampus.operationshub.notification.service.NotificationService;
 import com.smartcampus.operationshub.ticket.dto.request.AddResolutionNotesRequest;
 import com.smartcampus.operationshub.ticket.dto.request.AssignTechnicianRequest;
 import com.smartcampus.operationshub.ticket.dto.request.CreateIncidentTicketRequest;
@@ -50,6 +52,7 @@ public class IncidentTicketServiceImpl implements IncidentTicketService {
 	private final TechnicianUpdateLogRepository technicianUpdateLogRepository;
 	private final UserAccountRepository userAccountRepository;
 	private final TechnicianTicketUpdateService technicianTicketUpdateService;
+	private final NotificationService notificationService;
 
 	@Override
 	public IncidentTicketResponse createTicket(CreateIncidentTicketRequest request, String createdByUserId) {
@@ -199,6 +202,8 @@ public class IncidentTicketServiceImpl implements IncidentTicketService {
 				savedTicket.getCurrentStatus(),
 				request.getUpdateMessage());
 
+		notifyTicketStatusChange(savedTicket, currentStatus, savedTicket.getCurrentStatus());
+
 		return TicketMapper.toIncidentTicketResponse(savedTicket);
 	}
 
@@ -223,6 +228,8 @@ public class IncidentTicketServiceImpl implements IncidentTicketService {
 				currentStatus,
 				TicketStatus.REJECTED,
 				request.getRejectionReason());
+
+		notifyTicketStatusChange(savedTicket, currentStatus, TicketStatus.REJECTED);
 
 		return TicketMapper.toIncidentTicketResponse(savedTicket);
 	}
@@ -249,7 +256,23 @@ public class IncidentTicketServiceImpl implements IncidentTicketService {
 				TicketStatus.RESOLVED,
 				request.getResolutionNotes());
 
+		notifyTicketStatusChange(savedTicket, currentStatus, TicketStatus.RESOLVED);
+
 		return TicketMapper.toIncidentTicketResponse(savedTicket);
+	}
+
+	private void notifyTicketStatusChange(IncidentTicket ticket, TicketStatus previousStatus, TicketStatus newStatus) {
+		if (ticket.getReportedByUserId() == null) {
+			return;
+		}
+
+		notificationService.notifyUser(
+				ticket.getReportedByUserId(),
+				NotificationType.TICKET_STATUS_CHANGED,
+				"Ticket Status Updated",
+				"Ticket " + ticket.getTicketReferenceNumber() + " changed from " + previousStatus + " to " + newStatus + ".",
+				"TICKET",
+				ticket.getId());
 	}
 
 	private void validateCreateRequest(CreateIncidentTicketRequest request) {

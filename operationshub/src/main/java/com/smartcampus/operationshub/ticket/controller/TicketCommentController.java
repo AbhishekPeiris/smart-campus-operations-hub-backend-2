@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartcampus.operationshub.common.dto.ApiSuccessResponse;
+import com.smartcampus.operationshub.common.enums.UserRole;
+import com.smartcampus.operationshub.security.CurrentUserContext;
 import com.smartcampus.operationshub.ticket.dto.request.AddTicketCommentRequest;
 import com.smartcampus.operationshub.ticket.dto.request.UpdateTicketCommentRequest;
 import com.smartcampus.operationshub.ticket.dto.response.TicketCommentResponse;
@@ -27,17 +29,19 @@ import lombok.RequiredArgsConstructor;
 public class TicketCommentController {
 
     private final TicketCommentService ticketCommentService;
+    private final CurrentUserContext currentUserContext;
 
     @PostMapping
     public ApiSuccessResponse<TicketCommentResponse> addComment(
             @RequestParam String ticketId,
-            @RequestParam String userId,
+            @RequestParam(required = false) String userId,
             @Valid @RequestBody AddTicketCommentRequest request
     ) {
+        String requesterId = currentUserContext.getCurrentUserId();
         return ApiSuccessResponse.<TicketCommentResponse>builder()
                 .success(true)
                 .message("Comment added")
-                .data(ticketCommentService.addComment(ticketId, request, userId))
+                .data(ticketCommentService.addComment(ticketId, request, requesterId))
                 .build();
     }
 
@@ -46,16 +50,22 @@ public class TicketCommentController {
             @PathVariable String commentId,
             @Valid @RequestBody UpdateTicketCommentRequest request
     ) {
+        var currentUser = currentUserContext.getCurrentUser();
         return ApiSuccessResponse.<TicketCommentResponse>builder()
                 .success(true)
                 .message("Comment updated")
-                .data(ticketCommentService.updateComment(commentId, request))
+                .data(ticketCommentService.updateComment(
+                        commentId,
+                        request,
+                        currentUser.getId(),
+                        currentUser.getRole() == UserRole.ADMIN))
                 .build();
     }
 
     @DeleteMapping("/{commentId}")
     public ApiSuccessResponse<String> deleteComment(@PathVariable String commentId) {
-        ticketCommentService.deleteComment(commentId);
+        var currentUser = currentUserContext.getCurrentUser();
+        ticketCommentService.deleteComment(commentId, currentUser.getId(), currentUser.getRole() == UserRole.ADMIN);
         return ApiSuccessResponse.<String>builder()
                 .success(true)
                 .message("Comment deleted")

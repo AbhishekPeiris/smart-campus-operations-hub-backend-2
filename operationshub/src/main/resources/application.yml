@@ -16,6 +16,8 @@ application:
     jwt:
       secret-key: smart_campus_operations_hub_123456789
       expiration: 86400000
+    oauth:
+      google-client-id: ${GOOGLE_CLIENT_ID:}
 
 file:
   upload-dir: uploads/tickets

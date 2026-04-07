@@ -5,16 +5,20 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartcampus.operationshub.common.dto.ApiSuccessResponse;
 import com.smartcampus.operationshub.common.dto.PaginatedResponse;
+import com.smartcampus.operationshub.common.enums.UserRole;
+import com.smartcampus.operationshub.user.dto.UpdateUserRoleRequest;
 import com.smartcampus.operationshub.user.dto.UserProfileResponse;
 import com.smartcampus.operationshub.user.dto.UserSummaryResponse;
 import com.smartcampus.operationshub.user.service.UserAccountService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -54,6 +58,15 @@ public class UserManagementController {
                 .build();
     }
 
+        @GetMapping("/roles")
+        public ApiSuccessResponse<List<UserRole>> getAvailableRoles() {
+                return ApiSuccessResponse.<List<UserRole>>builder()
+                                .success(true)
+                                .message("Available roles retrieved")
+                                .data(List.of(UserRole.values()))
+                                .build();
+        }
+
     @PatchMapping("/{id}/status")
     public ApiSuccessResponse<String> updateUserStatus(
             @PathVariable String id,
@@ -66,4 +79,17 @@ public class UserManagementController {
                 .data(null)
                 .build();
     }
+
+        @PatchMapping("/{id}/role")
+        public ApiSuccessResponse<String> updateUserRole(
+                        @PathVariable String id,
+                    @Valid @RequestBody UpdateUserRoleRequest request
+        ) {
+                userAccountService.updateUserRole(id, request.getRole());
+                return ApiSuccessResponse.<String>builder()
+                                .success(true)
+                                .message("User role updated")
+                                .data(null)
+                                .build();
+        }
 }

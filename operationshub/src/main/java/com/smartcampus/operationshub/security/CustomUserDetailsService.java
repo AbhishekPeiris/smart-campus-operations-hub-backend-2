@@ -8,6 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.smartcampus.operationshub.user.model.UserAccount;
 import com.smartcampus.operationshub.user.repository.UserAccountRepository;
@@ -25,9 +26,11 @@ public class CustomUserDetailsService implements UserDetailsService {
         UserAccount userAccount = userAccountRepository.findByUniversityEmailAddress(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
 
+        String password = StringUtils.hasText(userAccount.getPasswordHash()) ? userAccount.getPasswordHash() : "oauth2-user";
+
         return new User(
                 userAccount.getUniversityEmailAddress(),
-                userAccount.getPasswordHash(),
+            password,
                 Boolean.TRUE.equals(userAccount.getAccountEnabled()),
                 true,
                 true,

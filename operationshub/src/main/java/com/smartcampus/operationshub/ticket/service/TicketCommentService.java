@@ -16,12 +16,16 @@ public interface TicketCommentService {
     /**
      * Update comment
      */
-    TicketCommentResponse updateComment(String commentId, UpdateTicketCommentRequest request);
+        TicketCommentResponse updateComment(
+            String commentId,
+            UpdateTicketCommentRequest request,
+            String requesterUserId,
+            boolean isAdmin);
 
     /**
      * Delete comment
      */
-    void deleteComment(String commentId);
+    void deleteComment(String commentId, String requesterUserId, boolean isAdmin);
 
     /**
      * Get all comments for a ticket

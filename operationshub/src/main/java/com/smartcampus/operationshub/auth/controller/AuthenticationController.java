@@ -1,12 +1,15 @@
 package com.smartcampus.operationshub.auth.controller;
 
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartcampus.operationshub.auth.dto.LoginRequest;
 import com.smartcampus.operationshub.auth.dto.LoginResponse;
+import com.smartcampus.operationshub.auth.dto.GoogleLoginRequest;
+import com.smartcampus.operationshub.auth.dto.GoogleOAuthConfigResponse;
 import com.smartcampus.operationshub.auth.dto.RegisterUserRequest;
 import com.smartcampus.operationshub.auth.service.AuthenticationService;
 import com.smartcampus.operationshub.common.dto.ApiSuccessResponse;
@@ -38,6 +41,25 @@ public class AuthenticationController {
                 .success(true)
                 .message("Login successful")
                 .data(response)
+                .build();
+    }
+
+    @PostMapping("/google")
+    public ApiSuccessResponse<LoginResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest request) {
+        LoginResponse response = authenticationService.loginWithGoogle(request);
+        return ApiSuccessResponse.<LoginResponse>builder()
+                .success(true)
+                .message("Google login successful")
+                .data(response)
+                .build();
+    }
+
+    @GetMapping("/oauth/google/config")
+    public ApiSuccessResponse<GoogleOAuthConfigResponse> getGoogleOAuthConfig() {
+        return ApiSuccessResponse.<GoogleOAuthConfigResponse>builder()
+                .success(true)
+                .message("Google OAuth configuration retrieved")
+                .data(authenticationService.getGoogleOAuthConfig())
                 .build();
     }
 }

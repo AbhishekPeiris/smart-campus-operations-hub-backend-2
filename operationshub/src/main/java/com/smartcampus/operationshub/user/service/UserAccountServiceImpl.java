@@ -63,6 +63,13 @@ public class UserAccountServiceImpl implements UserAccountService {
         userAccountRepository.save(userAccount);
     }
 
+    @Override
+    public void updateUserRole(String userId, UserRole role) {
+        UserAccount userAccount = findUserById(userId);
+        userAccount.setRole(role);
+        userAccountRepository.save(userAccount);
+    }
+
     private UserAccount findUserById(String userId) {
         return userAccountRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));

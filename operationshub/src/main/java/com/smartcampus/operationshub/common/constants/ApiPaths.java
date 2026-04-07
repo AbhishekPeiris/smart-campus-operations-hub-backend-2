@@ -7,6 +7,9 @@ public class ApiPaths {
     public static final String AUTH = BASE + "/auth";
     public static final String USERS = BASE + "/users";
     public static final String TICKETS = BASE + "/tickets";
+    public static final String RESOURCES = BASE + "/resources";
+    public static final String BOOKINGS = BASE + "/bookings";
+    public static final String NOTIFICATIONS = BASE + "/notifications";
 
     public static final String ATTACHMENTS = TICKETS + "/attachments";
     public static final String COMMENTS = TICKETS + "/comments";

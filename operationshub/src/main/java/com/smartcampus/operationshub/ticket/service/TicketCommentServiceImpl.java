@@ -4,8 +4,12 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.smartcampus.operationshub.common.enums.NotificationType;
 import com.smartcampus.operationshub.common.exception.BadRequestException;
+import com.smartcampus.operationshub.common.exception.ForbiddenOperationException;
 import com.smartcampus.operationshub.common.exception.ResourceNotFoundException;
+import com.smartcampus.operationshub.notification.service.NotificationService;
+import com.smartcampus.operationshub.ticket.model.IncidentTicket;
 import com.smartcampus.operationshub.ticket.dto.request.AddTicketCommentRequest;
 import com.smartcampus.operationshub.ticket.dto.request.UpdateTicketCommentRequest;
 import com.smartcampus.operationshub.ticket.dto.response.TicketCommentResponse;
@@ -25,10 +29,11 @@ public class TicketCommentServiceImpl implements TicketCommentService {
     private final TicketCommentRepository ticketCommentRepository;
     private final IncidentTicketRepository incidentTicketRepository;
     private final UserAccountRepository userAccountRepository;
+    private final NotificationService notificationService;
 
     @Override
     public TicketCommentResponse addComment(String ticketId, AddTicketCommentRequest request, String userId) {
-        incidentTicketRepository.findById(ticketId)
+        IncidentTicket ticket = incidentTicketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket not found with id: " + ticketId));
 
         UserAccount userAccount = findUserById(userId);
@@ -41,24 +46,47 @@ public class TicketCommentServiceImpl implements TicketCommentService {
                 .commentOwnerRole(userAccount.getRole())
                 .build();
 
-        return TicketMapper.toTicketCommentResponse(ticketCommentRepository.save(comment));
+        TicketComment savedComment = ticketCommentRepository.save(comment);
+
+        if (!userAccount.getId().equals(ticket.getReportedByUserId())) {
+            notificationService.notifyUser(
+                    ticket.getReportedByUserId(),
+                    NotificationType.TICKET_COMMENT_ADDED,
+                    "New Comment on Ticket",
+                    userAccount.getFullName() + " added a new comment on your ticket " + ticket.getTicketReferenceNumber() + ".",
+                    "TICKET",
+                    ticketId);
+        }
+
+        return TicketMapper.toTicketCommentResponse(savedComment);
     }
 
     @Override
-    public TicketCommentResponse updateComment(String commentId, UpdateTicketCommentRequest request) {
+    public TicketCommentResponse updateComment(
+            String commentId,
+            UpdateTicketCommentRequest request,
+            String requesterUserId,
+            boolean isAdmin) {
         TicketComment comment = findCommentById(commentId);
+
+        if (!isAdmin && !comment.getCommentOwnerUserId().equals(requesterUserId)) {
+            throw new ForbiddenOperationException("You can only edit your own comments");
+        }
+
         comment.setCommentText(request.getCommentText());
         comment.setEdited(true);
         return TicketMapper.toTicketCommentResponse(ticketCommentRepository.save(comment));
     }
 
     @Override
-    public void deleteComment(String commentId) {
-        if (!ticketCommentRepository.existsById(commentId)) {
-            throw new ResourceNotFoundException("Comment not found with id: " + commentId);
+    public void deleteComment(String commentId, String requesterUserId, boolean isAdmin) {
+        TicketComment comment = findCommentById(commentId);
+
+        if (!isAdmin && !comment.getCommentOwnerUserId().equals(requesterUserId)) {
+            throw new ForbiddenOperationException("You can only delete your own comments");
         }
 
-        ticketCommentRepository.deleteById(commentId);
+        ticketCommentRepository.deleteById(comment.getId());
     }
 
     @Override
