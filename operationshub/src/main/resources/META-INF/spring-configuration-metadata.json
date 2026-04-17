@@ -6,6 +6,11 @@
       "sourceType": "com.smartcampus.operationshub.security.JwtService"
     },
     {
+      "name": "application.security.oauth",
+      "type": "com.smartcampus.operationshub.auth.config.GoogleOAuthProperties",
+      "sourceType": "com.smartcampus.operationshub.auth.config.GoogleOAuthProperties"
+    },
+    {
       "name": "file",
       "type": "com.smartcampus.operationshub.storage.FileStorageProperties",
       "sourceType": "com.smartcampus.operationshub.storage.FileStorageProperties"
@@ -21,6 +26,16 @@
       "name": "application.security.jwt.expiration",
       "type": "java.lang.Long",
       "description": "JWT expiration in milliseconds."
+    },
+    {
+      "name": "application.security.oauth.google-client-id",
+      "type": "java.lang.String",
+      "description": "Google OAuth web client ID exposed to the frontend and enforced when validating Google ID tokens."
+    },
+    {
+      "name": "application.security.oauth.google-hosted-domain",
+      "type": "java.lang.String",
+      "description": "Optional Google Workspace hosted domain that is allowed to sign in."
     },
     {
       "name": "file.upload-dir",

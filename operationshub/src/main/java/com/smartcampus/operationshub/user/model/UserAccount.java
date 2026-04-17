@@ -33,6 +33,10 @@ public class UserAccount {
     @Field("university_email_address")
     private String universityEmailAddress;
 
+    @Indexed(unique = true, sparse = true)
+    @Field("google_subject_id")
+    private String googleSubjectId;
+
     @Field("password_hash")
     private String passwordHash;
 

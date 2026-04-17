@@ -68,6 +68,9 @@ application:
     jwt:
       secret-key: smart_campus_operations_hub_123456789
       expiration: 86400000
+    oauth:
+      google-client-id: ${GOOGLE_CLIENT_ID:}
+      google-hosted-domain: ${GOOGLE_HOSTED_DOMAIN:}
 
 file:
   upload-dir: uploads/tickets
@@ -75,12 +78,19 @@ file:
   max-file-size: 5242880
 ```
 
+Google sign-in configuration:
+
+- `GOOGLE_CLIENT_ID`: required for `/api/v1/auth/oauth/google/config` and `POST /api/v1/auth/google`
+- `GOOGLE_HOSTED_DOMAIN`: optional restriction for a Google Workspace domain such as `smartcampus.edu`
+- If `GOOGLE_CLIENT_ID` is blank, the backend returns `enabled: false` to the frontend config endpoint and rejects Google login attempts
+
 ## Authentication
 
 - Public endpoints:
   - `POST /api/v1/auth/register`
   - `POST /api/v1/auth/login`
   - `POST /api/v1/auth/google`
+  - `GET /api/v1/auth/oauth/google/config`
 - Protected endpoints:
   - All `/api/v1/users/**`
   - All `/api/v1/tickets/**`

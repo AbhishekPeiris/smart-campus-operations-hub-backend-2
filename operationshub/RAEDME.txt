@@ -1,0 +1,16 @@
+1) Create .env file inside operationhub folder
+2) add following command in .env
+
+MONGODB_URI=mongodb+srv://<<YOUR_MONGODB_URL>>/PAF?retryWrites=true&w=majority&appName=Cluster0
+
+3) Run project and doing the normal registration (create USER)
+4) go mongodb compass db and change user role USER --> ADMIN then login and after you navigate into Admin panel
+
+correct credentials :-
+admin@uni.com
+Admin@123
+
+FOR GOOGLE LOGIN YOU MUST ADDING FOLLOWING THINGS IN .env
+
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_HOSTED_DOMAIN=your-hosted-domain

@@ -1,17 +1,16 @@
 package com.smartcampus.operationshub.auth.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
-import org.springframework.beans.factory.annotation.Value;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.smartcampus.operationshub.auth.config.GoogleOAuthProperties;
 import com.smartcampus.operationshub.auth.dto.GoogleLoginRequest;
 import com.smartcampus.operationshub.auth.dto.GoogleOAuthConfigResponse;
 import com.smartcampus.operationshub.auth.dto.LoginRequest;
@@ -30,16 +29,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
 
-    private static final String GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token={idToken}";
-
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final CustomUserDetailsService customUserDetailsService;
-
-    @Value("${application.security.oauth.google-client-id:}")
-    private String googleClientId;
+    private final GoogleTokenVerifierService googleTokenVerifierService;
+    private final GoogleOAuthProperties googleOAuthProperties;
 
     @Override
     public void registerUser(RegisterUserRequest request) {
@@ -84,37 +80,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public LoginResponse loginWithGoogle(GoogleLoginRequest request) {
-        if (!StringUtils.hasText(googleClientId)) {
-            throw new BadRequestException("Google OAuth is not configured on the server");
-        }
+        VerifiedGoogleUser verifiedGoogleUser = googleTokenVerifierService.verify(request.getIdToken());
+        UserAccount userAccount = resolveGoogleUser(verifiedGoogleUser);
 
-        JsonNode tokenInfo = fetchGoogleTokenInfo(request.getIdToken());
-
-        String audience = tokenInfo.path("aud").asText();
-        String email = tokenInfo.path("email").asText();
-        String fullName = tokenInfo.path("name").asText();
-        boolean emailVerified = tokenInfo.path("email_verified").asBoolean(false);
-
-        if (!googleClientId.equals(audience)) {
-            throw new BadRequestException("Google token audience is invalid");
-        }
-        if (!emailVerified || !StringUtils.hasText(email)) {
-            throw new BadRequestException("Google account email is not verified");
-        }
-
-        UserAccount userAccount = userAccountRepository.findByUniversityEmailAddress(email)
-                .orElseGet(() -> registerGoogleUser(email, fullName));
-
-        if (!Boolean.TRUE.equals(userAccount.getAccountEnabled())) {
-            throw new BadRequestException("User account is disabled");
-        }
-
-        UserDetails userDetails = User.builder()
-                .username(userAccount.getUniversityEmailAddress())
-                .password("oauth2-user")
-                .authorities(new SimpleGrantedAuthority("ROLE_" + userAccount.getRole().name()))
-                .build();
-
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(userAccount.getUniversityEmailAddress());
         String token = jwtService.generateToken(userDetails);
 
         return LoginResponse.builder()
@@ -131,32 +100,92 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public GoogleOAuthConfigResponse getGoogleOAuthConfig() {
         return GoogleOAuthConfigResponse.builder()
                 .provider("google")
-                .enabled(StringUtils.hasText(googleClientId))
-                .clientId(googleClientId)
+                .enabled(StringUtils.hasText(googleOAuthProperties.getGoogleClientId()))
+                .clientId(googleOAuthProperties.getGoogleClientId())
                 .build();
     }
 
-    private JsonNode fetchGoogleTokenInfo(String idToken) {
-        try {
-            return RestClient.create()
-                    .get()
-                    .uri(GOOGLE_TOKEN_INFO_URL, idToken)
-                    .retrieve()
-                    .body(JsonNode.class);
-        } catch (Exception ex) {
-            throw new BadRequestException("Invalid Google ID token");
+    private UserAccount resolveGoogleUser(VerifiedGoogleUser verifiedGoogleUser) {
+        Optional<UserAccount> userByGoogleSubject = userAccountRepository
+                .findByGoogleSubjectId(verifiedGoogleUser.subject());
+        if (userByGoogleSubject.isPresent()) {
+            return synchronizeGoogleUser(userByGoogleSubject.get(), verifiedGoogleUser);
         }
+
+        Optional<UserAccount> userByEmail = userAccountRepository
+                .findByUniversityEmailAddress(verifiedGoogleUser.email());
+        if (userByEmail.isPresent()) {
+            UserAccount existingUser = userByEmail.get();
+            if (StringUtils.hasText(existingUser.getGoogleSubjectId())
+                    && !verifiedGoogleUser.subject().equals(existingUser.getGoogleSubjectId())) {
+                throw new BadRequestException("This email is already linked to a different Google account");
+            }
+
+            return synchronizeGoogleUser(existingUser, verifiedGoogleUser);
+        }
+
+        return registerGoogleUser(verifiedGoogleUser);
     }
 
-    private UserAccount registerGoogleUser(String email, String fullName) {
+    private UserAccount synchronizeGoogleUser(UserAccount userAccount, VerifiedGoogleUser verifiedGoogleUser) {
+        if (!Boolean.TRUE.equals(userAccount.getAccountEnabled())) {
+            throw new BadRequestException("User account is disabled");
+        }
+
+        boolean updated = false;
+        if (!verifiedGoogleUser.subject().equals(userAccount.getGoogleSubjectId())) {
+            userAccount.setGoogleSubjectId(verifiedGoogleUser.subject());
+            updated = true;
+        }
+
+        if (!StringUtils.hasText(userAccount.getPasswordHash())) {
+            userAccount.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+            updated = true;
+        }
+
+        if (!verifiedGoogleUser.email().equalsIgnoreCase(userAccount.getUniversityEmailAddress())) {
+            ensureEmailIsAvailableForGoogleUser(verifiedGoogleUser.email(), userAccount.getId());
+            userAccount.setUniversityEmailAddress(verifiedGoogleUser.email());
+            updated = true;
+        }
+
+        if (StringUtils.hasText(verifiedGoogleUser.fullName())
+                && !verifiedGoogleUser.fullName().equals(userAccount.getFullName())) {
+            userAccount.setFullName(verifiedGoogleUser.fullName());
+            updated = true;
+        }
+
+        if (updated) {
+            return userAccountRepository.save(userAccount);
+        }
+
+        return userAccount;
+    }
+
+    private void ensureEmailIsAvailableForGoogleUser(String email, String currentUserId) {
+        userAccountRepository.findByUniversityEmailAddress(email)
+                .filter(existingUser -> !existingUser.getId().equals(currentUserId))
+                .ifPresent(existingUser -> {
+                    throw new BadRequestException("Google account email is already linked to another user");
+                });
+    }
+
+    private UserAccount registerGoogleUser(VerifiedGoogleUser verifiedGoogleUser) {
+        if (!StringUtils.hasText(verifiedGoogleUser.subject())) {
+            throw new BadRequestException("Google account subject is missing");
+        }
+
+        String email = verifiedGoogleUser.email();
+        String fullName = verifiedGoogleUser.fullName();
         String derivedName = StringUtils.hasText(fullName) ? fullName : email.substring(0, email.indexOf("@"));
 
         UserAccount userAccount = UserAccount.builder()
                 .fullName(derivedName)
                 .universityEmailAddress(email)
-                .passwordHash(null)
+                .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .contactNumber(null)
                 .role(UserRole.USER)
+                .googleSubjectId(verifiedGoogleUser.subject())
                 .accountEnabled(true)
                 .build();
 

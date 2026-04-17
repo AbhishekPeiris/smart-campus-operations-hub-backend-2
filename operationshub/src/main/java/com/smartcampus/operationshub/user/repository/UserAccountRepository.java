@@ -13,6 +13,7 @@ import com.smartcampus.operationshub.user.model.UserAccount;
 public interface UserAccountRepository extends MongoRepository<UserAccount, String> {
 
     Optional<UserAccount> findByUniversityEmailAddress(String universityEmailAddress);
+    Optional<UserAccount> findByGoogleSubjectId(String googleSubjectId);
 
     boolean existsByUniversityEmailAddress(String universityEmailAddress);
 
